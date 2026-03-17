@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+##Installs Kaggle CLI (for downloading datasets), MLflow (experiment tracking), and Streamlit (for dashboards/apps)—all quietly via pip.
+##These enable data ingestion, ML lifecycle management, and simple UIs, common in skill-decay ML projects (e.g., modeling skill degradation over time).
 set -euo pipefail
 
 echo "=== skill-decay setup ==="
