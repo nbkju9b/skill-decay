@@ -2,25 +2,24 @@
 
 ##Installs Kaggle CLI (for downloading datasets), MLflow (experiment tracking), and Streamlit (for dashboards/apps)—all quietly via pip.
 ##These enable data ingestion, ML lifecycle management, and simple UIs, common in skill-decay ML projects (e.g., modeling skill degradation over time).
+
 set -euo pipefail
 
 echo "=== skill-decay setup ==="
 
-# 1. Astro CLI — wraps Airflow so we don't manage Docker Compose manually
 echo "[1/3] Installing Astro CLI..."
-curl -sSL https://install.astronomer.io | sudo bash -s -- v1.25.0
+curl -L https://github.com/astronomer/astro-cli/releases/download/v1.40.1/astro_1.40.1_linux_amd64.tar.gz | tar xz
+mv astro /usr/local/bin/
 astro version
 
-# 2. Java home for PySpark local mode
+echo "[2/3] Setting JAVA_HOME for PySpark..."
 if [ -z "${JAVA_HOME:-}" ]; then
   export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
   echo "export JAVA_HOME=$JAVA_HOME" >> ~/.bashrc
 fi
-echo "[2/3] JAVA_HOME=$JAVA_HOME"
+echo "JAVA_HOME=$JAVA_HOME"
 
-# 3. Kaggle CLI for dataset download
-echo "[3/3] Installing Kaggle CLI..."
+echo "[3/3] Installing Python deps..."
 pip install --quiet kaggle mlflow streamlit
 
 echo "=== Setup complete ==="
-echo "Next: run 'astro dev init' then 'astro dev start'"
