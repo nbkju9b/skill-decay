@@ -8,16 +8,14 @@ pyspark==3.5.1
 # Delta Lake on PySpark — ACID + time travel on parquet files
 delta-spark==3.1.0
 
-# Data quality contracts
+# Data quality contracts}
 great-expectations==0.18.19
 
-# ML experiment tracking — logs scoring weights per pipeline run
-mlflow==2.13.2
 
 # Core data libs
 pandas==2.2.2
-pyarrow==16.1.0
+pyarrow==15.0.2
 
 # Utilities
 requests==2.32.3
-python-dotenv==1.0.1
+
