@@ -3,17 +3,13 @@
   "image": "mcr.microsoft.com/devcontainers/universal:2",
 
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {
-      "version": "latest",
-      "dockerDashComposeVersion": "v2"
-    },
     "ghcr.io/devcontainers/features/java:1": {
       "version": "11",
       "jdkDistro": "ms"
     }
   },
 
-  "onCreateCommand": "bash .devcontainer/setup.sh",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
 
   "forwardPorts": [8080, 8501, 5000],
   "portsAttributes": {
@@ -37,5 +33,3 @@
 
   "remoteUser": "codespace"
 }
-
-
