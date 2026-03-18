@@ -38,6 +38,4 @@
   "remoteUser": "codespace"
 }
 
-Same folder, new file:
-```
-.devcontainer/setup.sh
+
