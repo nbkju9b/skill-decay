@@ -1,218 +1,232 @@
-# Astro CLI [![Release](https://img.shields.io/github/v/release/astronomer/astro-cli.svg?logo=github)](https://github.com/astronomer/astro-cli/releases) [![GoDoc](https://godoc.org/github.com/astronomer/astro-cli?status.svg)](https://godoc.org/github.com/astronomer/astro-cli) [![Go Report Card](https://goreportcard.com/badge/github.com/astronomer/astro-cli)](https://goreportcard.com/report/github.com/astronomer/astro-cli) [![Coverage Status](https://coveralls.io/repos/github/astronomer/astro-cli/badge.svg?branch=main)](https://coveralls.io/github/astronomer/astro-cli?branch=main)
+# ⏳ SkillDecay — Skills Shelf Life in the AI Era
 
-The Astro CLI is a command-line interface for data orchestration. It allows you to get started with Apache Airflow quickly and it can be used with all Astronomer products.
-<img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=29deaa05-2c91-4f0b-bb2c-d2e9408867e0" />
-## Usage
+> How long before your tech stack becomes obsolete? SkillDecay scores every tech skill by its remaining shelf life using real job market data, and visualises the result as a Career Doomsday Clock.
 
-  astro [command]
+**Live dashboard →** *(deploy link — add after Streamlit Community Cloud deployment)*  
+**Dataset →** [asaniczka/1-3m-linkedin-jobs-and-skills-2024](https://www.kaggle.com/datasets/asaniczka/1-3m-linkedin-jobs-and-skills-2024)
 
-### Core commands
+---
 
-  - `login`         Log in to the Astro CLI
-  - `logout`        Log out of the Astro CLI
-  - `dev init`      Initialize an Astro project in an empty local directory
-  - `dev start`     Build your Astro project into a Docker image and spin up a local Docker container for each Airflow component
-  - `dev stop`      Pause all Docker containers running your local Airflow environment
-  - `dev restart`   Stop your Airflow environment, rebuild your Astro project into a Docker image, and restart your Airflow environment with the new Docker image
-  - `deploy`        Deploy code to a Deployment on Astro
-  - `deployment`    Manage your Deployments running on Astronomer
-  - `dev`           Run your Astro project locally
-  - `api`           Make authenticated requests to Airflow and Astro Cloud REST APIs
-  - `help`          Help about any Astro CLI command
-  - `version`       Show the running version of the Astro CLI
-  - `workspace`     Manage Astronomer Workspaces
+## What it does
 
-For a list of available Astro CLI commands, see the [Astro CLI command reference](https://www.astronomer.io/docs/astro/cli/reference).
+SkillDecay ingests 10,000 LinkedIn job postings, extracts tech skill demand signals, and scores each skill with:
 
-## Install the Astro CLI
+- **Shelf life in months** — how long the skill is likely to remain in demand
+- **Doomsday clock %** — how close the skill is to obsolescence (0% = safe, 100% = extinct)
+- **Risk tier** — low / medium / high / critical
+- **Confidence flag** — based on job posting volume (high ≥ 30 jobs, medium ≥ 10, low < 10)
 
-Use these instructions to install, upgrade, or uninstall the Astro CLI.
+Results are served through an interactive Streamlit dashboard with four views: portfolio doomsday clock, skill search, leaderboard, and data quality panel.
+
+---
+
+## Pipeline architecture
+
+```
+Raw CSVs (Kaggle)
+      │
+      ▼
+┌─────────────┐     DAG 1 — ingest_bronze
+│   BRONZE    │     Reads raw CSV → adds audit columns
+│  Parquet    │     (_ingested_at, _source, _dag_run_id)
+└─────────────┘
+      │
+      ▼
+┌─────────────┐     DAG 2 — transform_silver
+│   SILVER    │     Tech filter (title keywords + soft skill exclusion)
+│  Parquet    │     INNER JOIN with skills → explode to one row per skill
+└─────────────┘     Config-driven via include/config/tech_keywords.json
+      │
+      ▼
+┌─────────────┐     DAG 3 — score_gold
+│    GOLD     │     Skill demand count → log+MinMax scaling
+│  Parquet    │     → shelf_life_months → doomsday_clock_pct
+└─────────────┘     → risk_tier → confidence flag
+      │
+      ▼
+┌─────────────┐
+│  Streamlit  │     4-tab interactive dashboard
+│  Dashboard  │
+└─────────────┘
+```
+
+**Orchestration:** Apache Airflow via Astro CLI 1.40.1  
+**Dev environment:** GitHub Codespaces
+
+---
+
+## Scoring formula
+
+```python
+# Step 1: Count skill demand from job postings
+job_count = number of tech job postings mentioning this skill
+
+# Step 2: Log-compress the skew, then MinMax scale to [0, 1]
+demand_score = MinMax(log1p(job_count))
+
+# Step 3: Derive shelf life and doomsday clock
+shelf_life_months = demand_score * 120          # 0–10 year range
+doomsday_clock_pct = 100 - (demand_score * 100) # inverse: higher demand = safer
+
+# Step 4: Assign risk tier
+risk_tier = "low"      if doomsday_clock_pct < 25
+          = "medium"   if doomsday_clock_pct < 50
+          = "high"     if doomsday_clock_pct < 75
+          = "critical" if doomsday_clock_pct >= 75
+
+# Step 5: Confidence flag
+confidence = "high"   if job_count >= 30
+           = "medium" if job_count >= 10
+           = "low"    if job_count < 10
+```
+
+**Why log+MinMax?** Raw job counts are heavily skewed — Python appears 10× more than niche languages. Log compression prevents the top 5 skills from dominating the scale. MinMax then forces the result into [0, 1] for consistent scoring across all skills.
+
+---
+
+## Top skills from Gold layer
+
+| Skill | Jobs | Shelf Life | Doomsday % | Risk |
+|-------|------|-----------|------------|------|
+| python | 153 | 120 months | 0% | 🟢 low |
+| aws | 110 | 111 months | 7.5% | 🟢 low |
+| kubernetes | 110 | 111 months | 7.5% | 🟢 low |
+| java | 86 | 104 months | 13.2% | 🟢 low |
+| linux | 84 | 103 months | 13.7% | 🟢 low |
+| sql | 84 | 103 months | 13.7% | 🟢 low |
+| docker | 72 | 99 months | 17.2% | 🟢 low |
+| devops | 63 | 95 months | 20.2% | 🟢 low |
+
+*AI/ML skills (pytorch, deep learning) present but low-confidence — fewer than 10 postings in the 10K sample.*
+
+---
+
+## Stack and design decisions
+
+### Why Airflow (Astro CLI), not a script?
+A single Python script would work for 10K rows. Airflow demonstrates production-grade orchestration — retries, dependency management, XCom for task handoff, and a scheduler. The same DAGs scale to the full 1.3M row dataset by changing only the source path. Astro CLI wraps Docker Compose automatically, avoiding hours of provider debugging.
+
+### Why pandas, not PySpark?
+10K rows fits comfortably in memory. PySpark local mode adds JVM startup overhead with no benefit at this scale. The architecture is designed to swap pandas for PySpark at the Silver and Gold layers for the full 1.3M dataset — only the `pd.read_parquet` / `pd.DataFrame` calls change.
+
+### Why Parquet, not Delta Lake?
+Parquet is sufficient for a static, batch-processed dataset. Delta Lake adds ACID transactions and time-travel, which are valuable when multiple DAGs write concurrently or when you need to roll back a bad pipeline run. Noted as a v2 upgrade path alongside PySpark.
+
+### Why INNER JOIN in Silver layer?
+Job postings without matched skills can't contribute to skill scoring — they'd only inflate the denominator. INNER JOIN keeps the pipeline honest: every Silver row represents a confirmed (job, skill) pair.
+
+### Why log+MinMax, not StandardScaler?
+StandardScaler produces negative values and assumes a normal distribution — neither is appropriate for job counts. Log+MinMax gives a strictly positive [0, 1] score with compressed skew. Interpretable: 1.0 = most in-demand skill in the dataset, 0.0 = least.
+
+### Why a config file for tech keywords?
+`include/config/tech_keywords.json` is loaded by DAG 2, not hardcoded. This means the tech filter can be updated without touching DAG code — a data engineering best practice that makes the pipeline maintainable and testable independently of orchestration logic.
+
+---
+
+## Project structure
+
+```
+skill-decay/
+├── dags/
+│   ├── dag_01_ingest_bronze.py       # Raw CSV → Bronze Parquet
+│   ├── dag_02_transform_silver.py    # Bronze → Silver (tech filter + join)
+│   └── dag_03_score_gold.py          # Silver → Gold (scoring + confidence)
+├── include/
+│   ├── data/
+│   │   ├── raw/                      # Source CSVs
+│   │   ├── bronze/                   # job_postings parquet (10,000 rows)
+│   │   ├── silver/                   # job_skills_exploded parquet (~30K rows)
+│   │   └── gold/                     # skill_scores parquet (10,571 skills scored)
+│   └── config/
+│       └── tech_keywords.json        # Tech title filter + soft skill exclusion list
+├── streamlit_app/
+│   └── app.py                        # 4-tab Streamlit dashboard
+├── scripts/
+│   ├── create_sample.py              # Samples 10K rows from full dataset
+│   └── explore_so_survey.py          # SO survey skill explorer (future enrichment)
+├── requirements.txt
+└── README.md
+```
+
+**Note on `include/` vs `data/`:** Astro CLI mounts only the `include/` directory into the Airflow Docker container. All data files live under `include/data/` so DAGs can read and write them. A top-level `data/` folder would be invisible to DAG tasks.
+
+---
+
+## How to run
 
 ### Prerequisites
+- GitHub Codespaces (or Docker locally)
+- Astro CLI 1.40.1+
+- Kaggle account + API token (`~/.kaggle/kaggle.json`)
 
-To install the Astro CLI on Mac, you'll need:
+### Setup
 
-- [Homebrew](https://brew.sh/)
-- [Docker Desktop](https://docs.docker.com/get-docker/) (v18.09 or higher)
+```bash
+# Clone the repo
+git clone https://github.com/nbkju9b/skill-decay
+cd skill-decay
 
-To install the Astro CLI on Windows, you'll need:
+# Start Airflow
+astro dev start
 
-- Windows 10 or later
-- [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-- [Docker Engine 1.13.1 or later](https://docs.docker.com/engine/install/)
-- [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) enabled on your local machine
-
-To install the Astro CLI on Windows with the Windows Package Manager winget command-line tool, you'll need:
-
-- Windows 10 1709 (build 16299) or later or Windows 11
-- Astro CLI version 1.6 or later
-- The latest version of the Windows [App Installer](https://apps.microsoft.com/store/detail/app-installer/9NBLGGH4NNS1?hl=en-ca&gl=ca)
-- [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
-- [Docker Engine 1.13.1 or later](https://docs.docker.com/engine/install/)
-- [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) enabled on your local machine
-
-To install the Astro CLI on Linux, you'll need:
-
-- [Docker Engine 0.13.1 or later](https://docs.docker.com/engine/install/)
-
-### Latest version
-
-#### Mac
-
-```sh
-brew install astro
-```
-#### Windows
-
-1. Go to the [Releases page](https://github.com/astronomer/astro-cli/releases)  of the Astro CLI GitHub repository, scroll to a CLI version, and then download the `.exe` file that matches the CPU architecture of your machine.
-
-    For example, to install v1.0.0 of the Astro CLI on a Windows machine with an AMD 64 architecture, download astro_1.0.0-converged_windows_amd64.exe.
-
-2. Rename the file `astro.exe`.
-
-3. Add the filepath for the directory containing the new `astro.exe` as a PATH environment variable. For example, if `astro.exe` is stored in `C:\Users\username\astro.exe`, you add `C:\Users\username` as your PATH environment variable. To learn more about configuring the PATH environment variable, see [How do I set or change the PATH system variable?](https://www.java.com/en/download/help/path.html).
-
-4. Restart your machine.
-
-#### Windows with winget
-
-Starting with Astro CLI version 1.6, you can use the Windows Package Manager winget command-line tool to install the Astro CLI.
-
-Open Windows PowerShell as an administrator and then run the following command:
-
-```sh
-winget install -e --id Astronomer.Astro
+# Access Airflow UI
+# https://localhost:8080  (local) or forwarded Codespace port
+# Login: admin / admin
 ```
 
-#### Linux
+### Run the pipeline
 
-```sh
-curl -sSL install.astronomer.io | sudo bash -s
+```bash
+# In Airflow UI, trigger DAGs in order:
+# 1. dag_01_ingest_bronze
+# 2. dag_02_transform_silver
+# 3. dag_03_score_gold
+
+# Or via CLI:
+astro dev run dags trigger dag_01_ingest_bronze
 ```
 
-### Specific version
+### Run the dashboard
 
-#### Mac
-
-To install a specific version of the Astro CLI, specify the version you want to install at the end of the command:
-
-```sh
-brew install astro@<major.minor.patch-version>
+```bash
+pip install streamlit plotly --break-system-packages
+streamlit run streamlit_app/app.py
 ```
 
-#### Windows
+---
 
-1. Delete the existing `astro.exe` file on your machine.
+## Gold layer stats
 
-2. Go to the [Releases page](https://github.com/astronomer/astro-cli/releases)  of the Astro CLI GitHub repository, scroll to a CLI version, and then download the `.exe` file that matches the CPU architecture of your machine.
+| Metric | Value |
+|--------|-------|
+| Total skills scored | 10,571 |
+| Unique skills | 10,601 |
+| Risk: critical | 1,484 |
+| Risk: high | 588 |
+| Risk: medium | 190 |
+| Risk: low | 50 |
+| Gold parquet size | 198.5 KB |
 
-    For example, to install v1.0.0 of the Astro CLI on a Windows machine with an AMD 64 architecture, download astro_1.0.0-converged_windows_amd64.exe.
+---
 
-3. Rename the file `astro.exe`.
+## Future work (v2)
 
-4. Add the filepath for the directory containing the new `astro.exe` as a PATH environment variable. For example, if `astro.exe` is stored in `C:\Users\username\astro.exe`, you add `C:\Users\username` as your PATH environment variable. To learn more about configuring the PATH environment variable, see [How do I set or change the PATH system variable?](https://www.java.com/en/download/help/path.html).
+- [ ] **Scale to full 1.3M dataset** — swap pandas → PySpark, Parquet → Delta Lake
+- [ ] **DAG 4 — Great Expectations** data quality checks as a separate DAG
+- [ ] **MLflow experiment tracking** — log scoring weights and metrics per pipeline run
+- [ ] **SO Developer Survey enrichment** — fuzzy-join developer adoption signal (supply side) against job posting demand (demand side) to identify leading-indicator skills
+- [ ] **Streamlit Community Cloud deployment** — shareable public URL
+- [ ] **Time-series scoring** — re-run pipeline monthly to track shelf life movement over time
 
-5. Restart your machine.
+---
 
-#### Windows with winget
+## Author
 
-Starting with Astro CLI version 1.6, you can use the Windows Package Manager winget command-line tool to install a specific version of the Astro CLI.
+**Arti Awasthi** — Senior Engineering Leader, 21 years experience  
+Ex-Arcesium (D.E. Shaw) · Wells Fargo · Visa · JPMorgan · Credit Suisse · Bank of America  
+GitHub: [github.com/nbkju9b](https://github.com/nbkju9b) · LinkedIn: [linkedin.com/in/arti-awasthi](https://linkedin.com/in/arti-awasthi)  
+Founder · [Fast Tech Academy](https://fasttechacademy.com)
 
-To install a specific version of the Astro CLI, specify the version you want to install at the end of the command. For example, running the following command in Windows PowerShell as an administrator installs Astro CLI version 1.6:
+---
 
-```sh
-winget install -e --id Astronomer.Astro -v 1.6.0
-```
-
-#### Linux
-
-To install a specific version of the CLI, specify the version number as a flag at the end of the command. For example, to install v1.1.0 of the CLI, you would run:
-
-```sh
-curl -sSL install.astronomer.io | sudo bash -s -- v1.1.0
-```
-
-> If you receive a `mkdir` error during installation, download and run the [godownloader](https://raw.githubusercontent.com/astronomer/astro-cli/main/godownloader.sh) script locally using:
->
->```sh
->$ cat godownloader.sh | bash -s -- -b /usr/local/bin
->```
-
-#### Troubleshoot installation issues
-
-If you encounter issues when installing the Astro CLI:
-
-- Make sure Docker Desktop is installed correctly. See [Install Docker Desktop on Windows]https://docs.docker.com/desktop/install/windows-install/).
-
-- Make sure the Docker Desktop WSL 2 backend is installed and configured correctly. See [Docker Desktop WSL 2 backend](https://docs.docker.com/desktop/windows/wsl/).
-
-- Enable Hyper-V on the Docker and Linux Containers and run the Astro CLI natively. For additional information, see the [Docker docs troubleshooting guide](https://docs.docker.com/desktop/troubleshoot/overview/).
-
-## Get started
-
-1. Create a project
-
-    ```
-    $ mkdir hello-astro && cd hello-astro
-    $ astro dev init
-    ```
-
-2. Install the binary and Confirm the install worked:
-
-    ```
-    $ ./astro
-    ```
-
-    This generates a basic project directory:
-
-    ```
-    .
-    ├── dags
-    │   ├── exampledag.py
-    ├── tests
-    │   ├── dags
-    │       ├── test_dag_example.py
-    ├── Dockerfile
-    ├── include
-    ├── packages.txt
-    ├── plugins
-    └── requirements.txt
-    ```
-
-    DAGs can go in the `dags` folder, custom Airflow plugins in `plugins`, python packages needed can go in `requirements.txt`, and OS level packages can go in `packages.txt`.
-
-3. Run `astro dev start` to start a local version of airflow on your machine. This will spin up a few locally running docker containers - one for the airflow scheduler, one for the webserver, and one for postgres.
-(Run `astro dev ps` to verify).
-
-## Versions
-
-Astro CLI versions are released regularly and use semantic versioning. Backwards compatibility between versions cannot be guaranteed. Compatibility is only guaranteed between matching **minor** versions of the platform and the Astro CLI. For example, Astro CLI 0.9.0` is guaranteed to be compatible with houston-api v0.9.x, but not houston-api v0.10.x.
-
-Astronomer ships major, minor, and patch releases of the Astro CLI in the following format:
-
-`{MAJOR_RELEASE}.{MINOR_RELEASE}.{PATCH_RELEASE}`
-
-All Astro CLI releases prior to 1.0.0 are considered beta.
-
-## Change Log
-
-Change log between each version can be found on the [releases](https://github.com/astronomer/astro-cli/releases) page
-
-## Debug
-
-The Astro CLI includes a debug flag that allows you to view queries and internal logs. To enable it, you can pass `--verbosity=debug` in your commands, or you can add the following entry to your `~/.astro/config.yaml` file:
-
-```yaml
-verbosity: debug
-```
-Adding this entry to your `~/.astro/config.yaml` file turns on debugging for all requests until you change it to `info`, or you remove it from the file.
-
-## Support
-
-To resolve an issue, Astronomer recommends reviewing the [Astronomer documentation](https://www.astronomer.io/docs/astro/cli/overview) first.
-
-If you're unable to resolve your issue after reviewing the documentation, you can post a question on the [Astronomer web forum](https://forum.astronomer.io) or you can contact [Astronomer support](https://support.astronomer.io).
-
-## License
-
-Apache 2.0 with Commons Clause
+*Built as part of an AI/ML engineering portfolio targeting VP Engineering and Data Engineering roles at quantitative finance and top-tier tech firms.*
