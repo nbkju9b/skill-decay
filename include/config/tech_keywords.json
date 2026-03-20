@@ -1,0 +1,26 @@
+{
+  "_comment": "Tech filter config — derived from job title word frequency analysis on LinkedIn dataset Jan 2024",
+  "_last_updated": "2026-03-19",
+  "_methodology": "value_counts() on job_title words + false positive testing on AI/ML phrases",
+  "tech_title_keywords": [
+    "engineer", "developer", "software", "data", "architect",
+    "devops", "cloud", "security", "analyst", "scientist",
+    "sre", "platform", "infrastructure", "backend", "frontend",
+    "fullstack", "mlops", "blockchain", "network", "systems",
+    "machine learning", "data science", "artificial intelligence",
+    "deep learning", "computer vision", "nlp engineer",
+    "ai engineer", "ml engineer", "generative ai",
+    "reinforcement learning", "data scientist"
+  ],
+  "soft_skills_to_exclude": [
+    "communication", "communication skills", "teamwork", "leadership",
+    "problem solving", "problemsolving", "problemsolving skills",
+    "project management", "time management", "attention to detail",
+    "customer service", "sales", "interpersonal skills",
+    "organizational skills", "analytical skills", "collaboration",
+    "team leadership", "presentation skills", "bachelor's degree",
+    "us citizenship", "specialized experience", "reliability",
+    "microsoft office suite", "excel",
+    "time after competitive appointment"
+  ]
+}
