@@ -2,7 +2,7 @@
 
 > How long before your tech stack becomes obsolete? SkillDecay scores every tech skill by its remaining shelf life using real job market data, and visualises the result as a Career Doomsday Clock.
 
-**Live dashboard →** *(deploy link — add after Streamlit Community Cloud deployment)*  
+**Live dashboard →** https://skill-decay.streamlit.app*  
 **Dataset →** [asaniczka/1-3m-linkedin-jobs-and-skills-2024](https://www.kaggle.com/datasets/asaniczka/1-3m-linkedin-jobs-and-skills-2024)
 
 ---
