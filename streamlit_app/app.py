@@ -253,6 +253,12 @@ with tab2:
 
         if results.empty:
             st.markdown(f"No results for **{query}**.")
+            st.markdown(
+                "This skill may not have appeared in the 2023–24 LinkedIn dataset used to build this index. "
+                "Skills like *agentic AI*, *LLMOps*, and *prompt engineering* were emerging at that time "
+                "and are likely underrepresented or absent. "
+                "Try broader terms — e.g. search `agent` instead of `agentic ai`, or `llm` instead of `large language model`."
+            )
         else:
             top = results.sort_values("job_count", ascending=False).iloc[0]
 
