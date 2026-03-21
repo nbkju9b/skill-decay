@@ -42,7 +42,7 @@ def ingest_bronze():
         if len(df) == 0:
             raise ValueError(f"Source file is empty: {path}")
 
-        print(f"[validate_source] ✓ {len(df):,} rows found at {path}")
+        print(f"[validate_source]  {len(df):,} rows found at {path}")
         print(f"[validate_source] Columns: {df.columns.tolist()}")
         return len(df)
 
@@ -88,7 +88,7 @@ def ingest_bronze():
         df.to_parquet(output_file, index=False)
 
         size_kb = output_file.stat().st_size / 1024
-        print(f"[write_bronze] ✓ {len(df):,} rows → {output_file} ({size_kb:.1f} KB)")
+        print(f"[write_bronze]  {len(df):,} rows → {output_file} ({size_kb:.1f} KB)")
         return str(output_file)
 
     # Wire tasks — output of each flows into the next

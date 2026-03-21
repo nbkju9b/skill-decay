@@ -4,7 +4,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 from pathlib import Path
 
-# ── Config ────────────────────────────────────────────────────────────────────
 GOLD_PATH = Path(__file__).parent.parent / "include/data/gold/skill_scores/part-00001.parquet"
 
 st.set_page_config(
@@ -13,7 +12,6 @@ st.set_page_config(
     layout="wide",
 )
 
-# ── Load data ─────────────────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
     df = pd.read_parquet(GOLD_PATH)
@@ -22,19 +20,14 @@ def load_data():
 
 df = load_data()
 
-# ── Helper: Doomsday gauge ────────────────────────────────────────────────────
 RISK_COLOR = {
-    "low":      "#22c55e",   # green
-    "medium":   "#f59e0b",   # amber
-    "high":     "#f97316",   # orange
-    "critical": "#ef4444",   # red
+    "low":      "#22c55e",
+    "medium":   "#f59e0b",
+    "high":     "#f97316",
+    "critical": "#ef4444",
 }
 
 def doomsday_gauge(value: float, title: str, subtitle: str = "") -> go.Figure:
-    """
-    value  : doomsday_clock_pct  0–100
-    Needle colour tracks risk zones.
-    """
     if value < 25:
         bar_color = RISK_COLOR["low"]
     elif value < 50:
@@ -58,10 +51,10 @@ def doomsday_gauge(value: float, title: str, subtitle: str = "") -> go.Figure:
             "bgcolor": "#1e1e2e",
             "borderwidth": 0,
             "steps": [
-                {"range": [0, 25],  "color": "#14532d"},
-                {"range": [25, 50], "color": "#713f12"},
-                {"range": [50, 75], "color": "#7c2d12"},
-                {"range": [75, 100],"color": "#450a0a"},
+                {"range": [0, 25],   "color": "#14532d"},
+                {"range": [25, 50],  "color": "#713f12"},
+                {"range": [50, 75],  "color": "#7c2d12"},
+                {"range": [75, 100], "color": "#450a0a"},
             ],
             "threshold": {
                 "line": {"color": "white", "width": 3},
@@ -78,7 +71,6 @@ def doomsday_gauge(value: float, title: str, subtitle: str = "") -> go.Figure:
     )
     return fig
 
-# ── Risk badge helper ─────────────────────────────────────────────────────────
 def risk_badge(tier: str) -> str:
     colors = {
         "low":      ("🟢", "#166534", "#dcfce7"),
@@ -98,16 +90,16 @@ def confidence_badge(level: str) -> str:
     fg, bg = colors.get(level.lower(), ("#333", "#eee"))
     return f'<span style="background:{bg};color:{fg};padding:2px 10px;border-radius:12px;font-size:13px">{level.capitalize()} confidence</span>'
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+
 with st.sidebar:
     st.image("https://img.icons8.com/fluency/96/hourglass.png", width=60)
     st.markdown("## ⏳ SkillDecay")
     st.caption("Skills Shelf Life in the AI Era")
     st.markdown("---")
-    st.markdown(f"**Gold layer:** `{GOLD_PATH.name}`")
-    st.markdown(f"**Total skills scored:** `{len(df):,}`")
-    st.markdown(f"**Unique skills:** `{df['skill'].nunique():,}`")
-    st.markdown("---")
+
+    st.markdown(f"**{len(df):,}** skills scored · **{df['skill'].nunique():,}** unique")
+    st.markdown("")
+
     risk_counts = df["risk_tier"].value_counts()
     for tier, color in RISK_COLOR.items():
         count = risk_counts.get(tier, 0)
@@ -118,21 +110,74 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-# ── Tabs ──────────────────────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### How to read this")
+
+    with st.expander("Doomsday Clock %"):
+        st.markdown("""
+0–100% score measuring how close a skill is to obsolescence, derived from employer job posting frequency.
+
+- **0%** — highest demand in the dataset, not going anywhere
+- **50%** — moderate demand, worth monitoring
+- **100%** — near-zero demand, employer market has moved on
+        """)
+
+    with st.expander("Shelf Life (months)"):
+        st.markdown("""
+Estimated months a skill is likely to remain in employer demand.
+
+- **120 months** — maximum (10 years), top-demand skill
+- **60 months** — moderate, worth maintaining
+- **< 24 months** — low demand, consider upskilling
+
+Derived as `demand_score × 120`.
+        """)
+
+    with st.expander("Risk Tier"):
+        st.markdown("""
+Four-level classification based on doomsday clock %:
+
+| Tier | Range | What it means |
+|------|-------|---------------|
+| 🟢 LOW | 0–25% | High demand — safe to invest in |
+| 🟡 MEDIUM | 25–50% | Moderate demand — monitor closely |
+| 🟠 HIGH | 50–75% | Declining demand — build alternatives |
+| 🔴 CRITICAL | 75–100% | Very low demand — upskill urgently |
+        """)
+
+    with st.expander("Confidence"):
+        st.markdown("""
+How reliable the score is, based on number of job postings mentioning this skill.
+
+| Level | Postings | Interpretation |
+|-------|----------|----------------|
+| High | ≥ 30 | Reliable signal |
+| Medium | 10–29 | Indicative |
+| Low | < 10 | Limited data — treat with caution |
+
+Low-confidence skills are scored and flagged, not hidden.
+        """)
+
+    with st.expander("Demand Score"):
+        st.markdown("""
+Normalised 0.0–1.0 score representing relative skill demand.
+
+Uses log compression to prevent dominant skills (e.g. Python) from collapsing all others to near-zero, then MinMax scaling to [0, 1].
+        """)
+
+    st.markdown("---")
+    st.caption("Data: LinkedIn job postings 2023–24 · 10K sample · [GitHub](https://github.com/nbkju9b/skill-decay)")
+
+
 tab1, tab2, tab3, tab4 = st.tabs(
     ["🕰️ Doomsday Clock", "🔍 Skill Search", "🏆 Leaderboard", "🛡️ Data Quality"]
 )
 
-# ═══════════════════════════════════════════════════════
-# TAB 1 — DOOMSDAY CLOCK
-# ═══════════════════════════════════════════════════════
 with tab1:
-    st.markdown("## 🕰️ Career Doomsday Clock")
-    st.caption("How close is your tech stack to obsolescence?")
+    st.caption("Average doomsday score and risk distribution across all scored skills.")
 
-    # Portfolio average gauge
-    avg_doom   = df["doomsday_clock_pct"].mean()
-    avg_shelf  = df["shelf_life_months"].mean()
+    avg_doom  = df["doomsday_clock_pct"].mean()
+    avg_shelf = df["shelf_life_months"].mean()
 
     col_gauge, col_metrics = st.columns([1, 1])
 
@@ -150,11 +195,10 @@ with tab1:
         m2.metric("Avg Shelf Life", f"{avg_shelf:.0f} mo")
 
         m3, m4 = st.columns(2)
-        m3.metric("🔴 Critical Skills", f"{risk_counts.get('critical', 0):,}")
-        m4.metric("🟢 Low-Risk Skills", f"{risk_counts.get('low', 0):,}")
+        m3.metric("Critical Skills", f"{risk_counts.get('critical', 0):,}")
+        m4.metric("Low-Risk Skills", f"{risk_counts.get('low', 0):,}")
 
         st.markdown("---")
-        # Risk distribution donut
         fig_donut = go.Figure(go.Pie(
             labels=[t.upper() for t in RISK_COLOR.keys()],
             values=[risk_counts.get(t, 0) for t in RISK_COLOR.keys()],
@@ -173,16 +217,14 @@ with tab1:
         st.plotly_chart(fig_donut, use_container_width=True)
 
     st.markdown("---")
-    st.markdown("### Risk Distribution — All Skills")
-
-    # Shelf life histogram by risk tier
+    st.markdown("#### Shelf Life Distribution by Risk Tier")
     fig_hist = px.histogram(
         df,
         x="shelf_life_months",
         color="risk_tier",
         nbins=40,
         color_discrete_map=RISK_COLOR,
-        labels={"shelf_life_months": "Shelf Life (months)", "count": "# Skills"},
+        labels={"shelf_life_months": "Shelf Life (months)", "count": "Skills"},
         category_orders={"risk_tier": ["low", "medium", "high", "critical"]},
     )
     fig_hist.update_layout(
@@ -198,25 +240,20 @@ with tab1:
     st.plotly_chart(fig_hist, use_container_width=True)
 
 
-# ═══════════════════════════════════════════════════════
-# TAB 2 — SKILL SEARCH
-# ═══════════════════════════════════════════════════════
 with tab2:
-    st.markdown("## 🔍 Skill Lookup")
     st.caption("Search any skill to see its shelf life, doomsday score, and risk tier.")
 
     search_col, _ = st.columns([2, 1])
     with search_col:
-        query = st.text_input("Enter a skill (e.g. python, kubernetes, cobol)", "")
+        query = st.text_input("Skill name (e.g. python, kubernetes, cobol)", "")
 
     if query.strip():
         q = query.strip().lower()
         results = df[df["skill"].str.lower().str.contains(q, na=False)]
 
         if results.empty:
-            st.warning(f"No skill matching **{query}** found in the Gold layer.")
+            st.markdown(f"No results for **{query}**.")
         else:
-            # Top match
             top = results.sort_values("job_count", ascending=False).iloc[0]
 
             left, right = st.columns([1, 1])
@@ -240,15 +277,14 @@ with tab2:
                 st.markdown("")
 
                 r1, r2, r3 = st.columns(3)
-                r1.metric("Job Count",      f"{int(top['job_count'])}")
-                r2.metric("Shelf Life",     f"{top['shelf_life_months']:.0f} mo")
-                r3.metric("Doomsday",       f"{top['doomsday_clock_pct']:.1f}%")
+                r1.metric("Job Count",    f"{int(top['job_count'])}")
+                r2.metric("Shelf Life",   f"{top['shelf_life_months']:.0f} mo")
+                r3.metric("Doomsday",     f"{top['doomsday_clock_pct']:.1f}%")
 
                 r4, r5 = st.columns(2)
-                r4.metric("Demand Score",   f"{top['demand_score']:.3f}")
-                r5.metric("Scaled Score",   f"{top['scaled_score']:.3f}" if "scaled_score" in top else "—")
+                r4.metric("Demand Score", f"{top['demand_score']:.3f}")
+                r5.metric("Scaled Score", f"{top['scaled_score']:.3f}" if "scaled_score" in top else "—")
 
-            # Show all fuzzy matches
             if len(results) > 1:
                 st.markdown("---")
                 st.markdown(f"#### All matches for **{query}** ({len(results)} skills)")
@@ -263,15 +299,10 @@ with tab2:
                     hide_index=True,
                 )
     else:
-        st.info("👆 Type a skill name above to see its decay profile.")
+        st.markdown("Enter a skill name above to see its decay profile.")
 
 
-# ═══════════════════════════════════════════════════════
-# TAB 3 — LEADERBOARD
-# ═══════════════════════════════════════════════════════
 with tab3:
-    st.markdown("## 🏆 Skill Leaderboard")
-
     filter_col1, filter_col2, filter_col3 = st.columns(3)
     with filter_col1:
         leaderboard_mode = st.selectbox(
@@ -283,28 +314,25 @@ with tab3:
     with filter_col3:
         top_n = st.slider("Show top N", 5, 50, 20)
 
-    # Apply confidence filter
     filtered = df.copy()
     if min_confidence == "medium+":
         filtered = filtered[filtered["confidence"].isin(["medium", "high"])]
     elif min_confidence == "high only":
         filtered = filtered[filtered["confidence"] == "high"]
 
-    # Sort
     sort_map = {
-        "Top demand (safest)":      ("job_count",          False),
-        "Highest doomsday risk":    ("doomsday_clock_pct", False),
-        "Longest shelf life":       ("shelf_life_months",  False),
-        "Shortest shelf life":      ("shelf_life_months",  True),
+        "Top demand (safest)":   ("job_count",          False),
+        "Highest doomsday risk": ("doomsday_clock_pct", False),
+        "Longest shelf life":    ("shelf_life_months",  False),
+        "Shortest shelf life":   ("shelf_life_months",  True),
     }
     sort_col, ascending = sort_map[leaderboard_mode]
     top_skills = (filtered
                   .sort_values(sort_col, ascending=ascending)
                   .head(top_n)
                   .reset_index(drop=True))
-    top_skills.index += 1   # 1-based ranking
+    top_skills.index += 1
 
-    # Bar chart
     bar_color_col = top_skills["risk_tier"].map(RISK_COLOR)
     fig_bar = go.Figure(go.Bar(
         x=top_skills[sort_col],
@@ -326,30 +354,24 @@ with tab3:
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
-    # Table below chart
     display_cols = [c for c in ["skill", "job_count", "shelf_life_months",
                                 "doomsday_clock_pct", "risk_tier", "confidence"]
                     if c in top_skills.columns]
     st.dataframe(top_skills[display_cols], use_container_width=True)
 
 
-# ═══════════════════════════════════════════════════════
-# TAB 4 — DATA QUALITY
-# ═══════════════════════════════════════════════════════
 with tab4:
-    st.markdown("## 🛡️ Data Quality Panel")
-    st.caption("Gold layer health check — no Great Expectations required.")
+    st.caption("Automated checks on the Gold layer. Source: LinkedIn job postings 2023–24, 10K sample.")
 
-    # Basic stats
-    total      = len(df)
+    total       = len(df)
     null_counts = df.isnull().sum()
-    has_nulls  = null_counts[null_counts > 0]
+    has_nulls   = null_counts[null_counts > 0]
 
     q_col1, q_col2, q_col3, q_col4 = st.columns(4)
-    q_col1.metric("Total rows",       f"{total:,}")
-    q_col2.metric("Unique skills",    f"{df['skill'].nunique():,}")
-    q_col3.metric("Columns w/ nulls", f"{len(has_nulls)}")
-    q_col4.metric("Null cells total", f"{null_counts.sum():,}")
+    q_col1.metric("Total rows",         f"{total:,}")
+    q_col2.metric("Unique skills",      f"{df['skill'].nunique():,}")
+    q_col3.metric("Columns with nulls", f"{len(has_nulls)}")
+    q_col4.metric("Null cells total",   f"{null_counts.sum():,}")
 
     st.markdown("---")
 
@@ -380,7 +402,6 @@ with tab4:
         )
         st.plotly_chart(fig_conf, use_container_width=True)
 
-        # Confidence breakdown table
         conf_pct = (df["confidence"].value_counts(normalize=True) * 100).round(1)
         st.dataframe(
             conf_pct.reset_index().rename(columns={"confidence": "Level", "proportion": "% of skills"}),
@@ -392,23 +413,23 @@ with tab4:
         st.markdown("#### Score Range Checks")
 
         checks = {
-            "demand_score ∈ [0, 1]":        df["demand_score"].between(0, 1).all(),
-            "doomsday_clock_pct ∈ [0, 100]": df["doomsday_clock_pct"].between(0, 100).all(),
-            "shelf_life_months > 0":         (df["shelf_life_months"] > 0).all(),
-            "job_count ≥ 1":                 (df["job_count"] >= 1).all(),
-            "No duplicate skills":           df["skill"].duplicated().sum() == 0,
-            "risk_tier values valid":        df["risk_tier"].isin(["low", "medium", "high", "critical"]).all(),
-            "confidence values valid":       df["confidence"].isin(["low", "medium", "high"]).all(),
+            "demand_score in [0, 1]":        df["demand_score"].between(0, 1).all(),
+            "doomsday_clock_pct in [0, 100]": df["doomsday_clock_pct"].between(0, 100).all(),
+            "shelf_life_months > 0":          (df["shelf_life_months"] > 0).all(),
+            "job_count >= 1":                 (df["job_count"] >= 1).all(),
+            "No duplicate skills":            df["skill"].duplicated().sum() == 0,
+            "risk_tier values valid":         df["risk_tier"].isin(["low", "medium", "high", "critical"]).all(),
+            "confidence values valid":        df["confidence"].isin(["low", "medium", "high"]).all(),
         }
 
         for check_name, passed in checks.items():
-            icon = "✅" if passed else "❌"
-            color = "#22c55e" if passed else "#ef4444"
+            color  = "#22c55e" if passed else "#ef4444"
+            result = "PASS" if passed else "FAIL"
             st.markdown(
                 f'<div style="display:flex;justify-content:space-between;padding:6px 0;'
                 f'border-bottom:1px solid #1e293b">'
                 f'<span style="font-size:13px">{check_name}</span>'
-                f'<span style="color:{color};font-weight:700">{icon} {"PASS" if passed else "FAIL"}</span>'
+                f'<span style="color:{color};font-weight:700">{result}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -422,9 +443,9 @@ with tab4:
     st.markdown("---")
     st.markdown("#### Null Audit")
     if len(has_nulls) == 0:
-        st.success("✅ No null values found in any column.")
+        st.markdown("No null values found across any column.")
     else:
-        st.warning(f"⚠️ {len(has_nulls)} column(s) contain nulls.")
+        st.markdown(f"{len(has_nulls)} column(s) contain nulls:")
         st.dataframe(
             has_nulls.reset_index().rename(columns={"index": "column", 0: "null_count"}),
             use_container_width=True,

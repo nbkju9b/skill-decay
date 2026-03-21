@@ -40,7 +40,7 @@ def score_gold():
         if len(df) == 0:
             raise ValueError("Silver file is empty")
 
-        print(f"[validate_silver] ✓ {len(df):,} rows")
+        print(f"[validate_silver]  {len(df):,} rows")
         print(f"[validate_silver] Unique skills: {df['skill'].nunique():,}")
         return len(df)
 
@@ -139,7 +139,7 @@ def score_gold():
         df.to_parquet(output_file, index=False)
 
         size_kb = output_file.stat().st_size / 1024
-        print(f"[write_gold] ✓ {len(df):,} skills scored → {output_file} ({size_kb:.1f} KB)")
+        print(f"[write_gold]  {len(df):,} skills scored → {output_file} ({size_kb:.1f} KB)")
         print(f"[write_gold] Risk distribution:")
         print(df["risk_tier"].value_counts())
         return str(output_file)

@@ -52,7 +52,7 @@ def transform_silver():
         if len(df) == 0:
             raise ValueError("Bronze file is empty")
 
-        print(f"[validate_bronze] ✓ {len(df):,} rows found")
+        print(f"[validate_bronze]  {len(df):,} rows found")
         print(f"[validate_bronze] Columns: {df.columns.tolist()}")
         return len(df)
 
@@ -150,7 +150,6 @@ def transform_silver():
         df = pd.read_csv(staged_path)
         print(f"[explode_skills] Input: {len(df):,} rows")
 
-        # Step 1: Split comma-separated string into Python list
         df["skill"] = df["job_skills"].str.split(",")
 
         # Step 2: Explode list into separate rows — one skill per row
@@ -202,7 +201,7 @@ def transform_silver():
         df.to_parquet(output_file, index=False)
 
         size_kb = output_file.stat().st_size / 1024
-        print(f"[write_silver] ✓ {len(df):,} rows → {output_file} ({size_kb:.1f} KB)")
+        print(f"[write_silver]  {len(df):,} rows → {output_file} ({size_kb:.1f} KB)")
         return str(output_file)
 
     # ── Task wiring — output of each flows into the next ──────────────
