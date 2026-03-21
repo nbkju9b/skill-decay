@@ -262,14 +262,20 @@ with tab2:
         else:
             top = results.sort_values("job_count", ascending=False).iloc[0]
 
+            # Null guard — low-frequency skills can have missing tier/confidence
+            risk_tier  = top["risk_tier"]          if pd.notna(top.get("risk_tier"))          else "critical"
+            confidence = top["confidence"]          if pd.notna(top.get("confidence"))         else "low"
+            doom_pct   = top["doomsday_clock_pct"]  if pd.notna(top.get("doomsday_clock_pct")) else 100.0
+            shelf_life = top["shelf_life_months"]   if pd.notna(top.get("shelf_life_months"))  else 0.0
+
             left, right = st.columns([1, 1])
 
             with left:
                 st.plotly_chart(
                     doomsday_gauge(
-                        top["doomsday_clock_pct"],
+                        doom_pct,
                         top["skill"].upper(),
-                        f"{int(top['job_count'])} jobs · {top['shelf_life_months']:.0f} mo shelf life",
+                        f"{int(top['job_count'])} jobs · {shelf_life:.0f} mo shelf life",
                     ),
                     use_container_width=True,
                 )
@@ -277,15 +283,15 @@ with tab2:
             with right:
                 st.markdown(f"### {top['skill'].upper()}")
                 st.markdown(
-                    risk_badge(top["risk_tier"]) + "  " + confidence_badge(top["confidence"]),
+                    risk_badge(risk_tier) + "  " + confidence_badge(confidence),
                     unsafe_allow_html=True,
                 )
                 st.markdown("")
 
                 r1, r2, r3 = st.columns(3)
                 r1.metric("Job Count",    f"{int(top['job_count'])}")
-                r2.metric("Shelf Life",   f"{top['shelf_life_months']:.0f} mo")
-                r3.metric("Doomsday",     f"{top['doomsday_clock_pct']:.1f}%")
+                r2.metric("Shelf Life",   f"{shelf_life:.0f} mo")
+                r3.metric("Doomsday",     f"{doom_pct:.1f}%")
 
                 r4, r5 = st.columns(2)
                 r4.metric("Demand Score", f"{top['demand_score']:.3f}")
