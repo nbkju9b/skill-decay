@@ -47,8 +47,8 @@ def doomsday_gauge(value: float, title: str, subtitle: str = "") -> go.Figure:
             "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#555",
                      "tickvals": [0, 25, 50, 75, 100],
                      "ticktext": ["0", "25", "50", "75", "100"]},
-            "bar": {"color": bar_color, "thickness": 0.25},
-            "bgcolor": "#1e1e2e",
+            "bar": {"color": bar_color, "thickness": 0.5},
+            "bgcolor": "#0f172a",
             "borderwidth": 0,
             "steps": [
                 {"range": [0, 25],   "color": "#14532d"},
@@ -57,8 +57,8 @@ def doomsday_gauge(value: float, title: str, subtitle: str = "") -> go.Figure:
                 {"range": [75, 100], "color": "#450a0a"},
             ],
             "threshold": {
-                "line": {"color": "white", "width": 3},
-                "thickness": 0.8,
+                "line": {"color": "white", "width": 6},
+                "thickness": 0.9,
                 "value": value,
             },
         },
