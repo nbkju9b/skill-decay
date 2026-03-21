@@ -209,9 +209,6 @@ __marimo__/
 .vscode/
 
 
-include/data/raw/
-include/data/bronze/
-include/data/silver/
 
 # Legacy empty folder
 data/
@@ -220,3 +217,8 @@ data/
 scripts/explore_so_survey.py
 
 # Allow gold layer for dashboard deployment
+
+# Raw and intermediate data layers — too large for git
+include/data/raw/
+include/data/bronze/
+include/data/silver/
