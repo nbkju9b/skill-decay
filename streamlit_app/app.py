@@ -21,10 +21,10 @@ def load_data():
 df = load_data()
 
 RISK_COLOR = {
-    "low":      "#22c55e",
-    "medium":   "#f59e0b",
-    "high":     "#f97316",
-    "critical": "#ef4444",
+    "low":      "#16a34a",   # green
+    "medium":   "#eab308",   # yellow
+    "high":     "#f97316",   # orange
+    "critical": "#dc2626",   # red
 }
 
 def doomsday_gauge(value: float, title: str, subtitle: str = "") -> go.Figure:
@@ -51,10 +51,10 @@ def doomsday_gauge(value: float, title: str, subtitle: str = "") -> go.Figure:
             "bgcolor": "#0f172a",
             "borderwidth": 0,
             "steps": [
-                {"range": [0, 25],   "color": "#14532d"},
-                {"range": [25, 50],  "color": "#713f12"},
-                {"range": [50, 75],  "color": "#7c2d12"},
-                {"range": [75, 100], "color": "#450a0a"},
+                {"range": [0, 25],   "color": "#15803d"},   # green
+                {"range": [25, 50],  "color": "#ca8a04"},   # yellow
+                {"range": [50, 75],  "color": "#ea580c"},   # orange
+                {"range": [75, 100], "color": "#b91c1c"},   # red
             ],
             "threshold": {
                 "line": {"color": "white", "width": 6},
@@ -101,11 +101,17 @@ with st.sidebar:
     st.markdown("")
 
     risk_counts = df["risk_tier"].value_counts()
+    TIER_LABELS = {
+        "low": "Low Risk",
+        "medium": "Medium Risk",
+        "high": "High Risk",
+        "critical": "Critical Risk",
+    }
     for tier, color in RISK_COLOR.items():
         count = risk_counts.get(tier, 0)
         st.markdown(
             f'<div style="display:flex;justify-content:space-between;padding:3px 0">'
-            f'<span style="color:{color};font-weight:600">{tier.upper()}</span>'
+            f'<span style="color:{color};font-weight:600">{TIER_LABELS[tier]}</span>'
             f'<span>{count:,}</span></div>',
             unsafe_allow_html=True,
         )
@@ -179,7 +185,17 @@ with tab1:
     avg_doom  = df["doomsday_clock_pct"].mean()
     avg_shelf = df["shelf_life_months"].mean()
 
+    st.markdown(
+        '<div style="display:flex;gap:20px;margin-bottom:8px;font-size:13px">'
+        '<span style="color:#16a34a">⬤ Low Risk (0–25%)</span>'
+        '<span style="color:#eab308">⬤ Medium Risk (25–50%)</span>'
+        '<span style="color:#f97316">⬤ High Risk (50–75%)</span>'
+        '<span style="color:#dc2626">⬤ Critical Risk (75–100%)</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
     col_gauge, col_metrics = st.columns([1, 1])
+    
 
     with col_gauge:
         st.plotly_chart(
