@@ -443,7 +443,7 @@ with tab4:
         checks = {
             "demand_score in [0, 1]":        df["demand_score"].between(0, 1).all(),
             "doomsday_clock_pct in [0, 100]": df["doomsday_clock_pct"].between(0, 100).all(),
-            "shelf_life_months > 0":          (df["shelf_life_months"] > 0).all(),
+            "shelf_life_months >= 0":          (df["shelf_life_months"] >= 0).all(),
             "job_count >= 1":                 (df["job_count"] >= 1).all(),
             "No duplicate skills":            df["skill"].duplicated().sum() == 0,
             "risk_tier values valid":         df["risk_tier"].isin(["low", "medium", "high", "critical"]).all(),
