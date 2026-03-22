@@ -91,7 +91,8 @@ def score_gold():
         # Step 5: Risk tier
         skill_counts["risk_tier"] = pd.cut(
             skill_counts["shelf_life_months"],
-            bins=[0, 24, 48, 72, 120],
+            #handling edge cases
+            bins=[-0.01, 24, 48, 72, float("inf")],
             labels=["critical", "high", "medium", "low"]
         )
 
