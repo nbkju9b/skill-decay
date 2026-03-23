@@ -309,9 +309,9 @@ with tab2:
                 r2.metric("Shelf Life",   f"{shelf_life:.0f} mo")
                 r3.metric("Doomsday",     f"{doom_pct:.1f}%")
 
-                r4, r5 = st.columns(2)
+                r4, _ = st.columns(2)
                 r4.metric("Demand Score", f"{top['demand_score']:.3f}")
-                r5.metric("Scaled Score", f"{top['scaled_score']:.3f}" if "scaled_score" in top else "—")
+                
 
             if len(results) > 1:
                 st.markdown("---")
